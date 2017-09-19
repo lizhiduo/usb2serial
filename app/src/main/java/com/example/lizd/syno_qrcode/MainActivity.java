@@ -8,8 +8,11 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.ccb.dev.interfaces.Qrcode;
+
+import java.io.UnsupportedEncodingException;
 
 public class MainActivity extends AppCompatActivity implements View.OnClickListener{
 
@@ -33,7 +36,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         time_ed = (EditText) findViewById(R.id.ed_time);
 
         Qrcode.open_qrcode_dev();
-
+//        Toast.makeText(this,"time is too long", Toast.LENGTH_LONG).show();
     }
 
     @Override
@@ -72,6 +75,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                  if(time_ed.getText().length()  != 0){
                     String str = time_ed.getText().toString();
                      wait_time = Integer.parseInt(str);
+                     if(wait_time > 25500){
+                         wait_time = 25500;
+                         Log.d(TAG, "time is too long, set time=25500");
+                     }
                 }else{
                      wait_time = -1;
                  }
@@ -82,6 +89,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                 rdata = Qrcode.read_qrcode_dev(wait_time); //ms
 
                 if(rdata != null){
+
+//                    try {
+//                        byte b[] = rdata.getBytes("GBK");//GBK  unicode  UTF-8
+//                        for(int i=0; i<b.length; i++){
+//                            int tmp = b[i] & 0xff;
+//                            Log.d(TAG, "i : "+ i + " hex: " + Integer.toHexString(tmp) + " data: "+ b[i] );
+//                        }
+//                    }catch (Exception e){
+//                        Log.d(TAG, ""+e);
+//                    }
+
                     Log.d(TAG,"lenth: "+ rdata.length() + "  rdata : " + rdata);
                 }else{
                     Log.d(TAG,"rdata is null");
@@ -106,5 +124,29 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
     protected void onDestroy() {
         super.onDestroy();
         Qrcode.close_qrcode_dev();
+    }
+
+
+    public static String toUtf8(String str) {
+        String result = null;
+        try {
+            result = new String(str.getBytes("gbk"), "UTF-8");  //gbk，unicode，utf-8
+        } catch (UnsupportedEncodingException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+        return result;
+    }
+
+    // 字符串转换成Unicode
+    public static String string2Unicode(String string) {
+        StringBuffer unicode = new StringBuffer();
+        for (int i = 0; i < string.length(); i++) {
+            char c = string.charAt(i);
+            unicode.append("\\u" + Integer.toHexString(c));
+
+            Log.d(TAG,""+ string.charAt(i));
+        }
+        return unicode.toString();
     }
 }

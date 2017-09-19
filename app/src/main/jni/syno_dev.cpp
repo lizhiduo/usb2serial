@@ -117,7 +117,7 @@ int set_dev_mode(speed_t speed, int dataWidth, int nStop, unsigned char waitTime
 
     //set wait time
     if(isWait){
-         new_cfg.c_cc[VTIME]= 1;
+         new_cfg.c_cc[VTIME]= 100; //100 * 100ms
          new_cfg.c_cc[VMIN] = 0;
          //new_cfg.c_cc[VMIN] = 1;
     }else{
@@ -157,6 +157,7 @@ int read_dev(unsigned char time, string &data, bool isWait){
     int nread = 0, bytes = 0;
     int ret = 0;
     string ret_buf = "";
+    bool isRead = false;
 
     speed_t speed = getBaudrate(SPEED);
     //set mode
@@ -173,7 +174,7 @@ int read_dev(unsigned char time, string &data, bool isWait){
             #ifdef DEBUG_DEV
             LOGI("set mode ....");
             #endif
-            ret = set_dev_mode( speed, 8, 1, 1, false);
+            ret = set_dev_mode( speed, 8, 1, 1, false);  //设置成阻塞100ms
             if(ret<0){
                 LOGE("set_dev_mode fail...");
                 return -1;
@@ -185,18 +186,34 @@ int read_dev(unsigned char time, string &data, bool isWait){
         #ifdef DEBUG_DEV
         LOGI("nread : %d ", nread);
         #endif
-        if(nread <= 0  && count == 0){
-            LOGE("NO READ DATA...");
-            return -1;
-        }
-        if(nread == 0  && count > 0){
-           #ifdef DEBUG_DEV
-                LOGI("count : %d ", count);
-                LOGI("break ....");
-            #endif
 
-            break;
+        //阻塞和非阻塞的不同处理
+        if(isWait){
+            if(nread == 0 && isRead){
+                #ifdef DEBUG_DEV
+                LOGI("read ok .... \n break...");
+                #endif
+                break;
+            }
+            if(nread == 0){
+                continue;
+            }
+            isRead = true;
+        }else{
+            if(nread <= 0  && count == 0){
+                LOGE("NO READ DATA...");
+                return -1;
+            }
+            if(nread == 0  && count > 0){
+                #ifdef DEBUG_DEV
+                     LOGI("count : %d ", count);
+                     LOGI("break ....");
+                 #endif
+                 break;
+            }
         }
+
+
         string tmp = buf;
         #ifdef DEBUG_DEV
             LOGI("count : %d  len: %d  %s", count, tmp.length(), tmp.c_str());
@@ -205,18 +222,18 @@ int read_dev(unsigned char time, string &data, bool isWait){
         #ifdef DEBUG_DEV
             LOGI("count : %d  len: %d  %s", count, ret_buf.length(), ret_buf.c_str());
         #endif
-        //data = data.append(tmp);
-        //LOGI("count : %d  len: %d  %s", count, data.length(), data.c_str());
 
         count++;
     }
     //
+    //LOGI("count : %d  len: %d  %s", count, ret_buf.length(), ret_buf.c_str());
+
     data = ret_buf;
 
     return nread;
 }
 
-
+#if 0
 int read_dev_block(string &data, bool isWait){
 
     char buf[READLENGTH+1] = {0};
@@ -227,40 +244,59 @@ int read_dev_block(string &data, bool isWait){
 
         speed_t speed = getBaudrate(SPEED);
         //set mode
-         ret = set_dev_mode( speed, 8, 1, 0, isWait);
+         ret = set_dev_mode( speed, 8, 1, 200, isWait);
          if(ret<0){
             LOGE("set_dev_mode fail...");
             return -1;
          }
         tcflush(syno_fd, TCIFLUSH); //清空读缓存
+        int count = 0;
         while(1){
-                nread = read(syno_fd, buf, READLENGTH);
-                if(nread == 0 && isRead){
-                    #ifdef DEBUG_DEV
-                    LOGI("read ok .... \n break...");
-                    #endif
-                    break;
-                }
-                if(nread == 0){
-                    continue;
-                }
-                isRead = true;
+            if( count == 1){
+                //set mode
                 #ifdef DEBUG_DEV
-                LOGI("nread : %d ", nread);
+                LOGI("set mode ....");
                 #endif
+                ret = set_dev_mode( speed, 8, 1, 1, false);
+                if(ret<0){
+                    LOGE("set_dev_mode fail...");
+                    return -1;
+                 }
+            }
 
-                string tmp = buf;
+            nread = read(syno_fd, buf, READLENGTH);
+            if(nread == 0 && isRead){
                 #ifdef DEBUG_DEV
-                LOGI("len: %d  %s", tmp.length(), tmp.c_str());
+                LOGI("read ok .... \n break...");
                 #endif
-                ret_buf = ret_buf.append(tmp);
-                #ifdef DEBUG_DEV
-                LOGI("len: %d  %s", ret_buf.length(), ret_buf.c_str());
-                #endif
-                memset(buf, 0, READLENGTH);
+                break;
+            }
+            if(nread == 0){
+                continue;
+            }
+            isRead = true;
+            #ifdef DEBUG_DEV
+            LOGI("nread : %d ", nread);
+            #endif
+
+            string tmp = buf;
+            #ifdef DEBUG_DEV
+            //buf[nread+1] = '\0';
+            for(int i=0; i<nread; i++){
+                LOGI("index: %d  %x %d %c", i, buf[i], buf[i], buf[i]);
+            }
+            LOGI("len: %d  %s", tmp.length(), tmp.c_str());
+            #endif
+            ret_buf = ret_buf.append(tmp);
+            #ifdef DEBUG_DEV
+            LOGI("len: %d  %s", ret_buf.length(), ret_buf.c_str());
+            #endif
+            memset(buf, 0, READLENGTH);
+            count ++;
         }
 
         data = ret_buf;
 
         return 0;
 }
+#endif

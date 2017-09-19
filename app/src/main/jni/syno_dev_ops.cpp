@@ -54,7 +54,7 @@ static jstring str2jstring(JNIEnv* env, const char* pStr)
     jclass     jstrObj   = (env)->FindClass( "java/lang/String");
     jmethodID  methodId  = (env)->GetMethodID( jstrObj, "<init>", "([BLjava/lang/String;)V");
     jbyteArray byteArray = (env)->NewByteArray( strLen);
-    jstring    encode    = (env)->NewStringUTF( "utf-8");
+    jstring    encode    = (env)->NewStringUTF( "utf-8");  //utf-8 GB2312  GBK
 
     (env)->SetByteArrayRegion( byteArray, 0, strLen, (jbyte*)pStr);
     jstring retStr = (jstring)(env)->NewObject( jstrObj, methodId, byteArray, encode);
@@ -126,11 +126,9 @@ JNIEXPORT jstring JNICALL Java_com_ccb_dev_interfaces_Qrcode_read_1qrcode_1dev
 
         dev_state = IS_READ_WAIT;
         int ndata = 0;
-        if( time<0 ){
-            ndata = read_dev_block(buf, isWait);
-        }else{
-            ndata = read_dev(waitTime, buf, isWait);
-        }
+
+        ndata = read_dev(waitTime, buf, isWait);
+
         dev_state = OPEN_AND_READ;
         if(ndata < 0 ){
             LOGE("READ ERROR");
@@ -138,8 +136,12 @@ JNIEXPORT jstring JNICALL Java_com_ccb_dev_interfaces_Qrcode_read_1qrcode_1dev
         }
 
          #ifdef DEBUG_DEV
-            LOGI("buf : %s", buf.c_str());
+            LOGI("[%s] buf : %s", __func__, buf.c_str());
          #endif
+
+       #if 1
+        LOGI("len: %d buf : %s", buf.length(), buf.c_str());
+       #endif
 
         ret = str2jstring(env, buf.c_str());
 

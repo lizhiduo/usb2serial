@@ -41,7 +41,7 @@
         android:layout_width="match_parent"
         android:layout_height="80dp"
         android:inputType="number"
-        android:hint="please set wait time"
+        android:hint="please set wait time  MAX Time is 25600ms -> 25s "
         />
 
     <TextView
