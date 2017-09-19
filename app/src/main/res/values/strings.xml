@@ -1,0 +1,6 @@
+<resources>
+    <string name="app_name">syno_qrcode</string>
+    <string name="read">read</string>
+    <string name="get">get</string>
+    <string name="getstate">getState</string>
+</resources>
