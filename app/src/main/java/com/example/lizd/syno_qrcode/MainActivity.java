@@ -49,6 +49,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
                     new MyThread().start();
                 }else{
                     Log.d(TAG, "Thread is runing...");
+                    Toast.makeText(this, "is reading, please wait...", Toast.LENGTH_LONG).show();
                 }
             break;
 

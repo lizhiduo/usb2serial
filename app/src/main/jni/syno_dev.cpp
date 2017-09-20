@@ -117,7 +117,7 @@ int set_dev_mode(speed_t speed, int dataWidth, int nStop, unsigned char waitTime
 
     //set wait time
     if(isWait){
-         new_cfg.c_cc[VTIME]= 100; //100 * 100ms
+         new_cfg.c_cc[VTIME]= 5; //100 * 100ms
          new_cfg.c_cc[VMIN] = 0;
          //new_cfg.c_cc[VMIN] = 1;
     }else{
@@ -161,7 +161,7 @@ int read_dev(unsigned char time, string &data, bool isWait){
 
     speed_t speed = getBaudrate(SPEED);
     //set mode
-     ret = set_dev_mode( speed, 8, 1, time, isWait);
+     ret = set_dev_mode( speed, 8, 1, 5, isWait);
      if(ret<0){
         LOGE("set_dev_mode fail...");
         return -1;
@@ -169,18 +169,19 @@ int read_dev(unsigned char time, string &data, bool isWait){
     tcflush(syno_fd, TCIFLUSH); //清空读缓存
     int count = 0;
     while(1){
+#if 0
         if( count == 1){
             //set mode
             #ifdef DEBUG_DEV
             LOGI("set mode ....");
             #endif
-            ret = set_dev_mode( speed, 8, 1, 1, false);  //设置成阻塞100ms
+            //ret = set_dev_mode( speed, 8, 1, 1, false);  //设置成阻塞100ms
             if(ret<0){
                 LOGE("set_dev_mode fail...");
                 return -1;
              }
         }
-
+#endif
         memset(buf, 0, READLENGTH);
         nread = read(syno_fd, buf, READLENGTH);
         #ifdef DEBUG_DEV
@@ -200,17 +201,23 @@ int read_dev(unsigned char time, string &data, bool isWait){
             }
             isRead = true;
         }else{
-            if(nread <= 0  && count == 0){
+
+             if(nread <= 0  && count*5 >= time){
                 LOGE("NO READ DATA...");
                 return -1;
             }
-            if(nread == 0  && count > 0){
+            if(nread == 0  && isRead){
                 #ifdef DEBUG_DEV
                      LOGI("count : %d ", count);
                      LOGI("break ....");
                  #endif
                  break;
             }
+            if(nread == 0 && !isRead){
+                count++;
+                continue;
+            }
+            isRead = true;
         }
 
 
