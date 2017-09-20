@@ -39,7 +39,21 @@ JNIEXPORT jstring JNICALL Java_com_ccb_dev_interfaces_Qrcode_read_1qrcode_1dev
 JNIEXPORT jint JNICALL Java_com_ccb_dev_interfaces_Qrcode_touch_1qrcode_1dev
   (JNIEnv *, jclass);
 
-extern int flag;
+/*
+ * Class:     com_ccb_dev_interfaces_Qrcode
+ * Method:    set_port_speed
+ * Signature: (I)I
+ */
+JNIEXPORT jint JNICALL Java_com_ccb_dev_interfaces_Qrcode_set_1port_1speed
+  (JNIEnv *, jclass, jint);
+
+/*
+ * Class:     com_ccb_dev_interfaces_Qrcode
+ * Method:    set_coded_format
+ * Signature: (Ljava/lang/String;)I
+ */
+JNIEXPORT jint JNICALL Java_com_ccb_dev_interfaces_Qrcode_set_1coded_1format
+  (JNIEnv *, jclass, jstring);
 
 #ifdef __cplusplus
 }

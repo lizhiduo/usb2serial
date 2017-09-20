@@ -35,7 +35,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         //read_btn = (Button) findViewById(R.id.read);
         time_ed = (EditText) findViewById(R.id.ed_time);
 
+        Qrcode.set_port_speed(115200);
+        Qrcode.set_coded_format("UTF-8");
         Qrcode.open_qrcode_dev();
+
 //        Toast.makeText(this,"time is too long", Toast.LENGTH_LONG).show();
     }
 

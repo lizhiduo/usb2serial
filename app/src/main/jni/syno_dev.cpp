@@ -18,10 +18,14 @@
 
 
 
-static int SPEED = 115200;
+int SPEED = 115200;
 
 int syno_fd = -1;
 
+char g_uart_dev[20]={0};
+int MAX_TRY = 4;
+
+int get_port_dev();
 
 static speed_t getBaudrate(int baudrate)
 {
@@ -79,7 +83,7 @@ int set_dev_mode(speed_t speed, int dataWidth, int nStop, unsigned char waitTime
     }
 
     //set mode
-    new_cfg.c_cflag |= CLOCAL |CREAD;
+    new_cfg.c_cflag |= CLOCAL | CREAD;
 
     new_cfg.c_lflag &=~ICANON; //原始模式
 
@@ -138,14 +142,21 @@ int set_dev_mode(speed_t speed, int dataWidth, int nStop, unsigned char waitTime
 
 
 int open_dev(char *uartDevicePath){
-
+    int ret = 0;
      #ifdef DEBUG_DEV
-        LOGI("uart path=%s", uartDevicePath);
+        LOGI("uart path=%s", g_uart_dev);
      #endif
+
+     ret = get_port_dev();
+     if(ret<0){
+        LOGE("GET PORT FAILED...");
+        return -1;
+     }
+     LOGI("%s is open ...", g_uart_dev);
      //open device
-    syno_fd = open(uartDevicePath, O_RDWR | O_NOCTTY ); //
+    syno_fd = open(g_uart_dev, O_RDWR | O_NOCTTY ); //
     if(syno_fd == -1){
-        LOGE("OPEN %s FAILED ...", uartDevicePath);
+        LOGE("OPEN %s FAILED ...", g_uart_dev);
         return -1;
     }
 
@@ -169,19 +180,7 @@ int read_dev(unsigned char time, string &data, bool isWait){
     tcflush(syno_fd, TCIFLUSH); //清空读缓存
     int count = 0;
     while(1){
-#if 0
-        if( count == 1){
-            //set mode
-            #ifdef DEBUG_DEV
-            LOGI("set mode ....");
-            #endif
-            //ret = set_dev_mode( speed, 8, 1, 1, false);  //设置成阻塞100ms
-            if(ret<0){
-                LOGE("set_dev_mode fail...");
-                return -1;
-             }
-        }
-#endif
+
         memset(buf, 0, READLENGTH);
         nread = read(syno_fd, buf, READLENGTH);
         #ifdef DEBUG_DEV
@@ -240,70 +239,84 @@ int read_dev(unsigned char time, string &data, bool isWait){
     return nread;
 }
 
-#if 0
-int read_dev_block(string &data, bool isWait){
 
-    char buf[READLENGTH+1] = {0};
-        int nread = 0;
-        int ret = 0;
-        bool isRead = false;
-        string ret_buf = "";
 
-        speed_t speed = getBaudrate(SPEED);
-        //set mode
-         ret = set_dev_mode( speed, 8, 1, 200, isWait);
-         if(ret<0){
-            LOGE("set_dev_mode fail...");
-            return -1;
-         }
-        tcflush(syno_fd, TCIFLUSH); //清空读缓存
-        int count = 0;
-        while(1){
-            if( count == 1){
-                //set mode
-                #ifdef DEBUG_DEV
-                LOGI("set mode ....");
-                #endif
-                ret = set_dev_mode( speed, 8, 1, 1, false);
-                if(ret<0){
-                    LOGE("set_dev_mode fail...");
-                    return -1;
-                 }
-            }
+int check_dev(char *uart_dev){
+    char buff[READLENGTH] = {'\0'};
+    int nread = 0, wr_num = 0;
+    int ret = 0;
 
-            nread = read(syno_fd, buf, READLENGTH);
-            if(nread == 0 && isRead){
-                #ifdef DEBUG_DEV
-                LOGI("read ok .... \n break...");
-                #endif
-                break;
-            }
-            if(nread == 0){
-                continue;
-            }
-            isRead = true;
-            #ifdef DEBUG_DEV
-            LOGI("nread : %d ", nread);
-            #endif
+    char cmd[]={0x7e, 0x00, 0x07, 0x01, 0x00, 0xf0, 0x0f, 0xab, 0xcd};
 
-            string tmp = buf;
-            #ifdef DEBUG_DEV
-            //buf[nread+1] = '\0';
-            for(int i=0; i<nread; i++){
-                LOGI("index: %d  %x %d %c", i, buf[i], buf[i], buf[i]);
-            }
-            LOGI("len: %d  %s", tmp.length(), tmp.c_str());
-            #endif
-            ret_buf = ret_buf.append(tmp);
-            #ifdef DEBUG_DEV
-            LOGI("len: %d  %s", ret_buf.length(), ret_buf.c_str());
-            #endif
-            memset(buf, 0, READLENGTH);
-            count ++;
+     if((access(uart_dev, F_OK)) == -1){
+        LOGE("%s is not exit...", uart_dev);
+        return -1;
+    }
+
+
+    syno_fd = open(uart_dev, O_RDWR | O_NOCTTY ); // O_NONBLOCK
+    if(syno_fd < 0){
+        LOGE("OPEN %s FAILED ...", uart_dev);
+        return -1;
+    }
+    speed_t speed = getBaudrate(SPEED);
+    ret = set_dev_mode(speed, 8, 1, 1, false);
+    if(ret<0){
+        LOGE("set_dev_mode fail...");
+        close(syno_fd);
+     }
+
+    wr_num = write(syno_fd, cmd, sizeof(cmd));
+    if( wr_num != sizeof(cmd) ){
+        LOGE("Write CMD failed ...");
+        close(syno_fd);
+        return -1;
+    }
+
+
+    if( (nread = read(syno_fd, buff, READLENGTH) ) >0 ){
+
+        buff[nread+1] = '\0';
+        #if 1
+        LOGI("len: %d  flag: %x  str: %s\n", nread, buff[2], &buff[4]);
+        #endif
+        if( memcmp(&buff[4], "SD-MG1S02", 5) == 0){
+            memcpy(g_uart_dev, uart_dev, strlen(uart_dev));
         }
 
-        data = ret_buf;
+    }else{
+        LOGE("READ FAILED...");
+        close(syno_fd);
+        return -1;
+    }
 
-        return 0;
+    close(syno_fd);
+
+    return 0;
 }
-#endif
+
+int get_port_dev(){
+    int ret = 0;
+    char PathName[20] = "/dev/ttyUSB";
+    char uart_dev[20];
+
+    for(int i=0; i<MAX_TRY; i++){
+        memset(uart_dev, 0, 20);
+        sprintf(uart_dev, "%s%d", PathName, i);
+
+        //LOGI("name: %s", uart_dev);
+        if(i == (MAX_TRY -1)){return -1;}
+        //ret = check_dev(uart_dev);
+        if((access(uart_dev, F_OK)) == -1){
+                LOGE("%s is not exit...", uart_dev);
+                continue;
+        }else{
+            memcpy(g_uart_dev, uart_dev, strlen(uart_dev));
+            break;
+        }
+
+        //if(ret == 0){break;}
+    }
+
+    return 0;
+}

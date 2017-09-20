@@ -12,6 +12,7 @@ using namespace std;
 #define READLENGTH  512
 
 extern int syno_fd;
+extern int SPEED;
 
 extern int open_dev(char *uartDevicePath);
 extern int read_dev(unsigned char time, string &data, bool isWait);

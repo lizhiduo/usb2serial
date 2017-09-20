@@ -39,4 +39,18 @@ public class Qrcode {
      * @return
      */
     public static native int touch_qrcode_dev();
+
+    /**
+     *
+     * @param speed
+     * @return
+     */
+    public static native int set_port_speed(int speed);
+
+    /**
+     *
+     * @param format : "gbk"  "utf-8"  "unicode"
+     * @return
+     */
+    public static native int set_coded_format(String format);
 }

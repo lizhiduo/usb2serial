@@ -14,10 +14,10 @@
 
 static char UART_DEV[20] = "/dev/ttyUSB0";
 
-
+char g_coded_format[20] = "utf-8";
 
 enum state{
-    NO_WORK,
+    NO_DEV,
     CLOSE_STATE,
     OPEN_AND_READ,
     OPEN_NO_READ,
@@ -31,7 +31,7 @@ static char* jstring2string(JNIEnv* env, jstring jstr)
 {
 	char* rtn = NULL;
 	jclass clsstring = (env)->FindClass( "java/lang/String");
-	jstring strencode = (env)->NewStringUTF( "utf-8");
+	jstring strencode = (env)->NewStringUTF( g_coded_format);
 	jmethodID mid = (env)->GetMethodID( clsstring, "getBytes", "(Ljava/lang/String;)[B");
 	jbyteArray barr= (jbyteArray)(env)->CallObjectMethod( jstr, mid, strencode);
 	jsize alen = (env)->GetArrayLength( barr);
@@ -54,7 +54,7 @@ static jstring str2jstring(JNIEnv* env, const char* pStr)
     jclass     jstrObj   = (env)->FindClass( "java/lang/String");
     jmethodID  methodId  = (env)->GetMethodID( jstrObj, "<init>", "([BLjava/lang/String;)V");
     jbyteArray byteArray = (env)->NewByteArray( strLen);
-    jstring    encode    = (env)->NewStringUTF( "utf-8");  //utf-8 GB2312  GBK
+    jstring    encode    = (env)->NewStringUTF( g_coded_format);  //utf-8 GB2312  GBK
 
     (env)->SetByteArrayRegion( byteArray, 0, strLen, (jbyte*)pStr);
     jstring retStr = (jstring)(env)->NewObject( jstrObj, methodId, byteArray, encode);
@@ -76,7 +76,7 @@ JNIEXPORT jint JNICALL Java_com_ccb_dev_interfaces_Qrcode_open_1qrcode_1dev
     ret = open_dev(UART_DEV);
     if( ret < 0 ){
         LOGE("open_dev ERROR");
-        dev_state = NO_WORK;
+        dev_state = NO_DEV;
         return -1;
     }
     dev_state = OPEN_AND_READ;
@@ -156,3 +156,52 @@ JNIEXPORT jint JNICALL Java_com_ccb_dev_interfaces_Qrcode_touch_1qrcode_1dev
 
         return dev_state;
   }
+
+  JNIEXPORT jint JNICALL Java_com_ccb_dev_interfaces_Qrcode_set_1port_1speed
+    (JNIEnv *, jclass, jint speed){
+
+        //LOGI("%s SPEED: %d", __func__, SPEED);
+
+        if(speed>0 && speed <= 1200){
+            SPEED = 1200;
+        }else if(speed>1200 && speed <= 4800){
+            SPEED = 4800;
+        }else if(speed>4800 && speed <= 9600){
+             SPEED = 9600;
+        }else if(speed>9600 && speed <= 14400){
+             SPEED = 14400;
+        }else if(speed>14400 && speed <= 19200){
+            SPEED = 19200;
+        }else if(speed>19200 && speed <= 38400){
+             SPEED = 38400;
+         }else if(speed>38400 && speed <= 57600){
+           SPEED = 57600;
+       }else if(speed>57600 && speed <= 115200){
+            SPEED = 115200;
+        }
+        //LOGI("%s SPEED: %d", __func__, SPEED);
+        #ifdef DEBUG_DEV
+            LOGI("%s SPEED: %d", __func__, SPEED);
+         #endif
+
+        return 0;
+    }
+
+    JNIEXPORT jint JNICALL Java_com_ccb_dev_interfaces_Qrcode_set_1coded_1format
+      (JNIEnv *env, jclass, jstring encode){
+            char *buf;
+
+            if(encode != NULL){
+                buf = jstring2string(env, encode);
+
+                memset(g_coded_format, 0, 20);
+                memcpy(g_coded_format, buf, strlen(buf));
+
+                LOGI("format: %s  %s", buf, g_coded_format);
+
+                free(buf);
+            }
+
+            return 0;
+
+      }
